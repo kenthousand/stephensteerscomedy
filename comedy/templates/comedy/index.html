@@ -1,0 +1,246 @@
+{% extends "comedy/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="brand">
+    <svg width="22" height="30" viewBox="0 0 48 64" fill="none">
+      <rect x="14" y="4" width="20" height="32" rx="10" fill="#e8e3e5"/>
+      <path d="M6 26a18 18 0 0 0 36 0" stroke="#e8e3e5" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <line x1="24" y1="44" x2="24" y2="56" stroke="#e8e3e5" stroke-width="4" stroke-linecap="round"/>
+      <line x1="14" y1="58" x2="34" y2="58" stroke="#e8e3e5" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <span class="display">{{ home.hero_headline }}</span>
+  </div>
+  <div class="nav-links">
+    <a href="#about">About</a>
+    <a href="#tour">Tour</a>
+    <a href="#clips">Clips</a>
+    <a href="#booking">Contact</a>
+    <a href="#tour" class="btn btn-dashed on-dark btn-small">Get Tickets</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-media">
+    {% if home.hero_video %}
+      <video autoplay muted loop playsinline>
+        <source src="{{ home.hero_video.url }}" type="video/mp4">
+      </video>
+    {% elif home.hero_image %}
+      <img src="{{ home.hero_image.url }}" alt="">
+    {% else %}
+      <div class="hero-media-empty">
+        <svg width="72" height="72" viewBox="0 0 72 72" opacity="0.22">
+          <circle cx="36" cy="36" r="34" fill="none" stroke="#e8e3e5" stroke-width="2.5"/>
+          <path d="M29 23 L50 36 L29 49 Z" fill="#e8e3e5"/>
+        </svg>
+      </div>
+    {% endif %}
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="hero-wordmark display">{{ home.hero_headline }}</div>
+    <div class="hero-meta">
+      <span class="tag-pill">{{ home.hero_tag }}</span>
+      <span class="hero-subline">{{ home.hero_subline }}</span>
+    </div>
+    <p class="hero-description">{{ home.hero_description }}</p>
+    <div class="hero-actions">
+      <a href="#tour" class="btn btn-solid">See Tour Dates</a>
+      <a href="#clips" class="btn btn-dashed on-dark">Watch Clips</a>
+    </div>
+  </div>
+</header>
+
+<!-- ABOUT -->
+<section class="about" id="about">
+  <div class="wrap">
+    <div class="about-photo">
+      {% if home.about_photo %}
+        <img src="{{ home.about_photo.url }}" alt="">
+      {% else %}
+        <svg width="60" height="78" viewBox="0 0 48 64" fill="none" opacity="0.35">
+          <rect x="14" y="4" width="20" height="32" rx="10" fill="#17293d"/>
+          <path d="M6 26a18 18 0 0 0 36 0" stroke="#17293d" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <line x1="24" y1="44" x2="24" y2="56" stroke="#17293d" stroke-width="4" stroke-linecap="round"/>
+          <line x1="14" y1="58" x2="34" y2="58" stroke="#17293d" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+      {% endif %}
+    </div>
+    <div class="about-body-wrap">
+      <div class="eyebrow" style="color: var(--rust);">About</div>
+      <div class="about-heading display">{{ home.about_heading }}</div>
+      <p class="about-text">{{ home.about_body }}</p>
+      {% if home.about_quote %}
+        <div class="about-quote">{{ home.about_quote }}</div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- TOUR DATES -->
+<section class="tour" id="tour">
+  <div class="wrap">
+    <div class="eyebrow" style="color: var(--sky);">Tour</div>
+    <div class="tour-heading display">Catch Stephen live:</div>
+    <div class="tour-list">
+      {% for show in tour_dates %}
+        <div class="tour-row">
+          <div class="tour-when">
+            <div class="tour-date display">{{ show.date|date:"M j" }}</div>
+            <div class="tour-place">{{ show.venue }}, {{ show.city }}</div>
+          </div>
+          {% if show.ticket_url %}
+            <a href="{{ show.ticket_url }}" class="btn btn-dashed on-dark btn-small">Get Tickets</a>
+          {% else %}
+            <span class="btn btn-dashed on-dark btn-small">Details soon</span>
+          {% endif %}
+        </div>
+      {% empty %}
+        <div class="tour-empty">No dates on the books yet — add some from the admin.</div>
+      {% endfor %}
+    </div>
+    <div class="tour-note">More dates added regularly — join the list below to hear first.</div>
+  </div>
+</section>
+
+<!-- CLIPS -->
+<section class="clips" id="clips">
+  <div class="wrap">
+    <div class="eyebrow" style="color: var(--rust);">Clips</div>
+    <div class="clips-heading display">Recent sets &amp; recordings.</div>
+    {% if clips_source == "instagram" %}
+      <div class="clips-source-note">Synced automatically from Instagram.</div>
+    {% endif %}
+    {% if clips %}
+      <div class="clip-grid">
+        {% for clip in clips %}
+          <a class="clip-card" href="{{ clip.url }}" target="_blank" rel="noopener">
+            <div class="clip-thumb">
+              {% if clip.thumbnail_url %}
+                <img src="{{ clip.thumbnail_url }}" alt="">
+              {% else %}
+                <svg width="48" height="48" viewBox="0 0 52 52">
+                  <circle cx="26" cy="26" r="25" fill="none" stroke="#17293d" stroke-width="2" opacity="0.6"/>
+                  <path d="M21 17 L37 26 L21 35 Z" fill="#17293d" opacity="0.6"/>
+                </svg>
+              {% endif %}
+            </div>
+            <div class="clip-title">{{ clip.title }}</div>
+            <div class="clip-platform">{{ clip.platform_label }}</div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="clips-empty">No clips posted yet — add some from the admin, or connect Instagram sync.</div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- SOCIAL -->
+<section class="social">
+  <div class="social-heading display">Follow along.</div>
+  <div class="social-row">
+    {% for link in socials %}
+      <a class="social-item" href="{{ link.url }}" target="_blank" rel="noopener">
+        <span class="social-icon">
+          {% if link.platform == "instagram" %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg>
+          {% elif link.platform == "tiktok" %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><path d="M14 4v9.5a3.5 3.5 0 1 1-3-3.46"/><path d="M14 4c0 3 2 5 5 5"/></svg>
+          {% elif link.platform == "youtube" %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M10.5 9.5 15 12l-4.5 2.5Z" fill="#e8e3e5" stroke="none"/></svg>
+          {% elif link.platform == "x" %}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><path d="M4 4l16 16M20 4 4 20"/></svg>
+          {% else %}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
+          {% endif %}
+        </span>
+        <span class="social-label">{{ link.get_platform_display }}</span>
+      </a>
+    {% empty %}
+      <div class="social-label" style="opacity:0.7;">Add your social links from the admin.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- EMAIL SIGNUP -->
+<section class="signup" id="signup">
+  <div class="signup-heading display">Don&rsquo;t miss a show.</div>
+  <div class="signup-sub">One email when tickets go up. Nothing else.</div>
+  <form class="signup-form" method="post" action="{% url 'comedy:index' %}#signup">
+    {% csrf_token %}
+    <input type="hidden" name="form_name" value="email_signup">
+    {{ email_form.email }}
+    <button type="submit" class="btn btn-solid">Sign Up</button>
+  </form>
+  {% if email_form.email.errors %}
+    <div class="form-errors">{{ email_form.email.errors|striptags }}</div>
+  {% endif %}
+  <div class="signup-note">No spam. Unsubscribe anytime.</div>
+</section>
+
+<!-- REQUEST A SHOW / BOOKING -->
+<section class="booking" id="booking">
+  <div class="wrap">
+    <div class="eyebrow" style="color: var(--rust);">Booking</div>
+    <div class="booking-heading display">Want {{ home.hero_headline|title }} in your city?</div>
+    <p class="booking-sub">Clubs, festivals, private events, corporate — send the deets and I'll get back to you toot sweet.</p>
+
+    <form class="booking-form" method="post" action="{% url 'comedy:index' %}#booking">
+      {% csrf_token %}
+      <input type="hidden" name="form_name" value="show_request">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="{{ show_request_form.name.id_for_label }}">Name</label>
+          {{ show_request_form.name }}
+          {% if show_request_form.name.errors %}<div class="form-errors">{{ show_request_form.name.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-field">
+          <label for="{{ show_request_form.email.id_for_label }}">Email</label>
+          {{ show_request_form.email }}
+          {% if show_request_form.email.errors %}<div class="form-errors">{{ show_request_form.email.errors|striptags }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="{{ show_request_form.venue_city.id_for_label }}">Venue / City</label>
+        {{ show_request_form.venue_city }}
+        {% if show_request_form.venue_city.errors %}<div class="form-errors">{{ show_request_form.venue_city.errors|striptags }}</div>{% endif %}
+      </div>
+      <div class="form-field">
+        <label for="{{ show_request_form.preferred_dates.id_for_label }}">Preferred dates</label>
+        {{ show_request_form.preferred_dates }}
+      </div>
+      <div class="form-field">
+        <label for="{{ show_request_form.details.id_for_label }}">Details</label>
+        {{ show_request_form.details }}
+      </div>
+      <button type="submit" class="btn btn-solid" style="width: fit-content;">Send Request</button>
+    </form>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="brand">
+    <svg width="16" height="22" viewBox="0 0 48 64" fill="none">
+      <rect x="14" y="4" width="20" height="32" rx="10" fill="#e8e3e5"/>
+      <path d="M6 26a18 18 0 0 0 36 0" stroke="#e8e3e5" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <line x1="24" y1="44" x2="24" y2="56" stroke="#e8e3e5" stroke-width="4" stroke-linecap="round"/>
+      <line x1="14" y1="58" x2="34" y2="58" stroke="#e8e3e5" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <span class="footer-note">&copy; {% now "Y" %} {{ home.footer_note }}</span>
+  </div>
+  <div class="footer-links">
+    <a href="#about">About</a>
+    <a href="#tour">Tour</a>
+    <a href="#clips">Clips</a>
+    <a href="#booking">Contact</a>
+  </div>
+</footer>
+
+{% endblock %}
