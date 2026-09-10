@@ -11,6 +11,8 @@ from pathlib import Path
 import os
 import secrets
 
+import dj_database_url
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SECURITY -----------------------------------------------------------
@@ -23,7 +25,30 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or secrets.token_urlsafe(50)
 # PRODUCTION: set DEBUG=False and fill in ALLOWED_HOSTS with your real
 # domain(s) before this ever goes on the public internet.
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+
+# Comma-separated in the env var, e.g. "stephensteerscomedy.com,www.stephensteerscomedy.com".
+# Render's own *.onrender.com hostname is added automatically so health
+# checks and the dashboard preview link keep working alongside your domain.
+ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',') if h]
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# Django checks the Origin header on POSTs (both site forms use this) against
+# this list once DEBUG is off. Needs the scheme, e.g. "https://stephensteerscomedy.com".
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o]
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
+
+if not DEBUG:
+    # Render terminates TLS at its proxy and talks plain HTTP to the app,
+    # so this header is what tells Django the original request was HTTPS.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 7  # 1 week to start; raise once you're confident
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # --- APPS -----------------------------------------------------------------
 INSTALLED_APPS = [
@@ -38,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -68,13 +94,15 @@ WSGI_APPLICATION = 'steers_comedy.wsgi.application'
 ASGI_APPLICATION = 'steers_comedy.asgi.application'
 
 # --- DATABASE ---------------------------------------------------------
-# SQLite is fine for a single-comedian site with light traffic. Swap in
-# Postgres later by changing this block if you outgrow it.
+# Reads DATABASE_URL when it's set (Render provides this automatically once
+# a Postgres database is attached to the service) and falls back to the
+# local SQLite file otherwise, so `manage.py runserver` on your machine
+# needs no extra setup.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+    )
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -91,12 +119,23 @@ USE_TZ = True
 
 # --- STATIC & MEDIA -----------------------------------------------------
 STATIC_URL = 'static/'
-# PRODUCTION: run `python manage.py collectstatic` and serve STATIC_ROOT
-# with your web server (or whitenoise) instead of Django's dev server.
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# WhiteNoise serves collected static files directly from the app process —
+# no separate web server or CDN needed — and this storage backend adds
+# far-future cache headers plus gzip/brotli compression for free.
+# build.sh runs `collectstatic` on every deploy to populate STATIC_ROOT.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# On Render, set MEDIA_ROOT (via the DJANGO_MEDIA_ROOT env var) to the mount
+# path of an attached persistent disk — e.g. /var/data/media — otherwise
+# uploaded photos/video vanish on every redeploy, since the rest of the
+# filesystem is wiped and rebuilt each time. See render.yaml.
+MEDIA_ROOT = Path(os.environ.get('DJANGO_MEDIA_ROOT', BASE_DIR / 'media'))
 
 # --- CACHE -----------------------------------------------------------
 # Backs the Instagram sync (comedy/instagram.py): recent posts are fetched

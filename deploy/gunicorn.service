@@ -1,0 +1,19 @@
+[Unit]
+Description=gunicorn daemon for Steers Comedy
+After=network.target
+
+[Service]
+User=django
+Group=www-data
+WorkingDirectory=/home/django/steers-comedy-django
+EnvironmentFile=/home/django/steers-comedy-django/deploy/.env
+ExecStart=/home/django/steers-comedy-django/.venv/bin/gunicorn \
+          --workers 2 \
+          --umask 007 \
+          --bind unix:/run/steers-comedy.sock \
+          steers_comedy.wsgi:application
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

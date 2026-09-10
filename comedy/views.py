@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from .forms import EmailSignupForm, ShowRequestForm
 from .instagram import get_recent_clips
@@ -29,7 +30,14 @@ def _clips_for_display():
 
 def index(request):
     home = HomePage.get_solo()
-    tour_dates = TourDate.objects.filter(is_published=True)
+    today = timezone.localdate()
+    # Past dates auto-archive off the main list the day after the show —
+    # no need to manually unpublish each one. They reappear, most recent
+    # first, in the "Past shows" strip below it.
+    tour_dates = TourDate.objects.filter(is_published=True, date__gte=today)
+    # Capped so the page doesn't grow forever — all past shows stay in the
+    # admin either way, this is just what shows on the site.
+    past_tour_dates = TourDate.objects.filter(is_published=True, date__lt=today).order_by('-date')[:8]
     clips, clips_source = _clips_for_display()
     socials = SocialLink.objects.all()
 
@@ -59,6 +67,7 @@ def index(request):
     context = {
         'home': home,
         'tour_dates': tour_dates,
+        'past_tour_dates': past_tour_dates,
         'clips': clips,
         'clips_source': clips_source,
         'socials': socials,

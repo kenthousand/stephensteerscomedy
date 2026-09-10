@@ -139,6 +139,18 @@ a { color: inherit; text-decoration: none; }
 .tour-empty { font-size: 14px; color: var(--pearl); opacity: 0.6; padding: 20px 0; }
 .tour-note { font-size: 13px; color: var(--pearl); opacity: 0.6; margin-top: 20px; }
 
+.past-shows { margin-top: 56px; padding-top: 32px; border-top: 1px solid rgba(232,227,229,0.18); }
+.past-shows-heading {
+  font-family: 'Anton', sans-serif; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--sky); opacity: 0.85;
+}
+.past-shows-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.past-show-row {
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  font-size: 13px; color: var(--pearl); opacity: 0.55;
+}
+.past-show-date { font-family: 'Anton', sans-serif; min-width: 90px; }
+
 /* Clips ------------------------------------------------------------------- */
 .clips { background: var(--pearl); color: var(--midnight); padding: 80px 32px; }
 .clips-heading { font-size: clamp(32px, 4.5vw, 52px); margin-top: 10px; line-height: 1.05; }

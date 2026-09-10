@@ -1,0 +1,50 @@
+# Render "Blueprint" — lets you spin up the web service + database together
+# from the Render dashboard (New > Blueprint) instead of configuring each
+# by hand. See the README's "Deploying to Render" section for the full walkthrough.
+#
+# Using the FREE plan for both the web service and the database:
+#   - The free database is deleted 30 days after creation unless you
+#     upgrade it before then (Render emails a warning first).
+#   - The free web service falls asleep after 15 minutes with no visitors
+#     and takes ~1 minute to wake back up on the next request.
+#   - Free services can't attach a persistent disk, so anything uploaded
+#     through the admin (hero photo/video, about photo, clip thumbnails)
+#     will disappear the next time the service restarts. Keep local copies
+#     of anything you upload so you can re-add it if that happens, and see
+#     the README note on this before you rely on it for anything permanent.
+# Upgrading later is just changing `plan: free` to `plan: starter` (web) or
+# `plan: basic-256mb` (database) here, or straight from the dashboard —
+# either way nothing else about the setup needs to change.
+
+databases:
+  - name: steers-comedy-db
+    databaseName: steers_comedy
+    plan: free
+
+services:
+  - type: web
+    name: steers-comedy
+    runtime: python
+    plan: free
+    buildCommand: "bash build.sh"
+    startCommand: "gunicorn steers_comedy.wsgi:application"
+    healthCheckPath: /
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      # Fill these in with your real domain(s) after the first deploy —
+      # see the README. Comma-separated, no spaces, e.g.:
+      #   DJANGO_ALLOWED_HOSTS = stephensteerscomedy.com,www.stephensteerscomedy.com
+      #   DJANGO_CSRF_TRUSTED_ORIGINS = https://stephensteerscomedy.com,https://www.stephensteerscomedy.com
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ""
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: ""
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: steers-comedy-db
+          property: connectionString

@@ -86,7 +86,7 @@
 <section class="tour" id="tour">
   <div class="wrap">
     <div class="eyebrow" style="color: var(--sky);">Tour</div>
-    <div class="tour-heading display">Catch Stephen live:</div>
+    <div class="tour-heading display">Where to catch it live.</div>
     <div class="tour-list">
       {% for show in tour_dates %}
         <div class="tour-row">
@@ -105,6 +105,20 @@
       {% endfor %}
     </div>
     <div class="tour-note">More dates added regularly — join the list below to hear first.</div>
+
+    {% if past_tour_dates %}
+      <div class="past-shows">
+        <div class="past-shows-heading">Past shows</div>
+        <div class="past-shows-list">
+          {% for show in past_tour_dates %}
+            <div class="past-show-row">
+              <span class="past-show-date">{{ show.date|date:"M j, Y" }}</span>
+              <span class="past-show-place">{{ show.venue }}, {{ show.city }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
   </div>
 </section>
 
@@ -156,6 +170,8 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M10.5 9.5 15 12l-4.5 2.5Z" fill="#e8e3e5" stroke="none"/></svg>
           {% elif link.platform == "x" %}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><path d="M4 4l16 16M20 4 4 20"/></svg>
+          {% elif link.platform == "cdmxcomedyfest" %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.9L21 9.6l-4.7 4.3L17.5 21 12 17.6 6.5 21l1.2-7.1L3 9.6l6.4-.7L12 3z"/></svg>
           {% else %}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8e3e5" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
           {% endif %}
@@ -188,8 +204,8 @@
 <section class="booking" id="booking">
   <div class="wrap">
     <div class="eyebrow" style="color: var(--rust);">Booking</div>
-    <div class="booking-heading display">Want {{ home.hero_headline|title }} in your city?</div>
-    <p class="booking-sub">Clubs, festivals, private events, corporate — send the deets and I'll get back to you toot sweet.</p>
+    <div class="booking-heading display">Want {{ home.hero_headline|title }} at your city?</div>
+    <p class="booking-sub">Clubs, private events, corporate — send the details and expect a reply within a few days.</p>
 
     <form class="booking-form" method="post" action="{% url 'comedy:index' %}#booking">
       {% csrf_token %}

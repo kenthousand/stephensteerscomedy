@@ -93,12 +93,21 @@ python manage.py sync_instagram
 ```
 
 **Keeping the token alive.** The token expires roughly every 60 days.
-Run this periodically — a monthly cron job, or your host's scheduled-task
-feature (Render/Railway both have one) — well before it expires:
+Run this periodically, well before it expires:
 
 ```bash
 python manage.py refresh_instagram_token
 ```
+
+On the droplet, a monthly cron job is the simplest way — as the `django`
+user (`crontab -e`), add a line like:
+
+```
+0 3 1 * * cd /home/django/steers-comedy-django && set -a && . deploy/.env && set +a && .venv/bin/python manage.py refresh_instagram_token >> /home/django/refresh_instagram.log 2>&1
+```
+
+(runs at 3am on the 1st of each month; check `refresh_instagram.log` if
+posts stop updating).
 
 If the token does expire before you renew it, the site doesn't break —
 it just quietly falls back to the manually-added Clips until you paste in
@@ -117,20 +126,105 @@ or want sign-ups to land in Mailchimp/ConvertKit/etc. instead of just
 the database, that's a small addition to `comedy/views.py` — happy to
 wire it up once you've picked a service.
 
-## Before deploying anywhere public
+## Deploying to a DigitalOcean droplet + Cloudflare
 
-This is set up for local development (`DEBUG=True`, a SQLite database,
-`ALLOWED_HOSTS=['*']`). Before it goes on the public internet:
+This is the low-cost path: a single $6/month Basic Droplet running
+Django directly (gunicorn behind nginx, managed by systemd) with
+SQLite — no separate database service to pay for, and uploads persist
+on the droplet's own disk instead of vanishing on redeploy the way they
+would on a platform-as-a-service host. Cloudflare sits in front for
+DNS, the free SSL certificate visitors see, and caching. Everything
+host-specific lives under `deploy/`.
 
-1. Set a real `DJANGO_SECRET_KEY` environment variable (don't use the
-   auto-generated dev fallback in `settings.py`).
-2. Set `DJANGO_DEBUG=False` and `DJANGO_ALLOWED_HOSTS` to your real
-   domain(s).
-3. Run `python manage.py collectstatic` and serve the `staticfiles/`
-   folder (and `media/` for uploads) through your web server or a
-   host like Render/Railway/Fly/PythonAnywhere.
-4. Consider Postgres instead of SQLite if you expect real traffic —
-   swap the `DATABASES` block in `steers_comedy/settings.py`.
+**1. Create the droplet.** In the DigitalOcean control panel, **Create
+> Droplets**: Ubuntu 24.04 LTS, the $6/mo Basic plan (1 GB RAM — the
+$4/mo 512 MB plan can be tight when installing Pillow and running
+migrations together), whichever region is closest to your visitors,
+and your SSH key. Note the droplet's IP address once it's up.
+
+**2. Clone the repo onto it.** SSH in as root, create the app user, and
+clone as that user (using the same GitHub auth — token or SSH key —
+you set up on your Mac):
+
+```bash
+ssh root@YOUR_DROPLET_IP
+adduser --system --group --home /home/django --shell /bin/bash django
+su - django
+git clone https://github.com/kenthousand/stephensteerscomedy.git steers-comedy-django
+cd steers-comedy-django
+```
+
+**3. Set your real environment values.** Still as the `django` user:
+
+```bash
+cp deploy/.env.example deploy/.env
+nano deploy/.env
+```
+
+Generate a real secret key to paste in for `DJANGO_SECRET_KEY`:
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+Set `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS` to your
+real domain (both are already filled in with `stephensteerscomedy.com`
+as an example — just confirm they match).
+
+**4. Get a Cloudflare Origin Certificate.** In the Cloudflare dashboard
+for your domain: **SSL/TLS > Origin Server > Create Certificate**
+(defaults are fine — it'll cover your domain and `*.yourdomain.com`).
+Cloudflare shows you two blocks of text, the certificate and the
+private key. Back on the droplet, as root:
+
+```bash
+exit   # back to root, if you're still in as django
+mkdir -p /etc/ssl/cloudflare
+nano /etc/ssl/cloudflare/origin.pem   # paste the certificate block, save
+nano /etc/ssl/cloudflare/origin.key   # paste the private key block, save
+chmod 600 /etc/ssl/cloudflare/origin.key
+```
+
+**5. Run the setup script.** Still as root:
+
+```bash
+cd /home/django/steers-comedy-django
+bash deploy/setup.sh
+```
+
+This installs nginx/Python, creates the virtualenv, installs
+dependencies, runs `collectstatic`/`migrate`/`createcachetable`, and
+sets up + starts the gunicorn systemd service, the nginx site, and the
+firewall (only SSH, HTTP, and HTTPS are left open). It's safe to re-run
+if something fails partway through.
+
+**6. Create your admin login** (the command it prints at the end):
+
+```bash
+sudo -u django bash -c 'set -a; source /home/django/steers-comedy-django/deploy/.env; set +a; /home/django/steers-comedy-django/.venv/bin/python /home/django/steers-comedy-django/manage.py createsuperuser'
+```
+
+**7. Point Cloudflare at the droplet.** In Cloudflare's DNS settings for
+your domain, add an `A` record for both the bare domain and `www`
+pointing at the droplet's IP address, proxy status **Proxied**
+(orange cloud). Then in **SSL/TLS**, set the mode to **Full (strict)**
+— this tells Cloudflare to trust the Origin Certificate you installed
+in step 4 rather than talking plain HTTP to the droplet.
+
+DNS changes can take anywhere from a few minutes to a few hours to
+propagate. Once they do, your domain should load the site over HTTPS.
+
+**Future updates:** push to GitHub as usual, then on the droplet (as
+the `django` user, from inside the repo):
+```bash
+./deploy/deploy.sh
+```
+which pulls the latest code, reinstalls any new dependencies, reruns
+`collectstatic`/`migrate`, and restarts the app.
+
+**Ongoing maintenance you're now responsible for** (this is the
+trade-off for the lower cost vs. a managed platform): keep the server
+patched with `apt update && apt upgrade` occasionally, and it's worth
+setting DigitalOcean's automatic droplet backups on later if the site
+grows to matter more.
 
 ## Project layout
 
@@ -142,4 +236,6 @@ comedy/management/commands/   sync_instagram, refresh_instagram_token
 comedy/templates/             base.html + index.html (the whole one-page site)
 comedy/static/                style.css — all the brand styling lives here
 media/                         Uploaded images/video land here (git-ignored)
+deploy/                         Droplet deploy files: nginx config, systemd service,
+                                 setup.sh (one-time), deploy.sh (updates), .env.example
 ```

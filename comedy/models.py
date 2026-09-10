@@ -120,6 +120,7 @@ class SocialLink(models.Model):
         ('tiktok', 'TikTok'),
         ('youtube', 'YouTube'),
         ('x', 'X'),
+        ('cdmxcomedyfest', 'CDMX Comedy Fest'),
         ('other', 'Other'),
     ]
 
